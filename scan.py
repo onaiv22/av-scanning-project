@@ -197,7 +197,7 @@ def sns_scan_results(
         },
     )
 
-
+#@copy_clean_files
 def lambda_handler(event, context):
     s3 = boto3.resource("s3")
     s3_client = boto3.client("s3")
@@ -233,7 +233,7 @@ def lambda_handler(event, context):
         print("Downloading definition file %s from s3://%s" % (local_path, s3_path))
         s3.Bucket(AV_DEFINITION_S3_BUCKET).download_file(s3_path, local_path)
         print("Downloading definition file %s complete!" % (local_path))
-    scan_result, scan_signature = clamav.scan_file(file_path)
+    scan_result, scan_signature = clamav.scan_file(file_path, event)
     print(
         "Scan of s3://%s resulted in %s\n"
         % (os.path.join(s3_object.bucket_name, s3_object.key), scan_result)
@@ -259,6 +259,10 @@ def lambda_handler(event, context):
     metrics.send(
         env=ENV, bucket=s3_object.bucket_name, key=s3_object.key, status=scan_result
     )
+    #Delete clean files from source bucket after its been copied to destination bucket
+    if scan_result == AV_STATUS_CLEAN: #and copy_clean_files()
+        s3_client.delete_object(Bucket=s3_object.bucket_name, Key=s3_object.key)
+
     # Delete downloaded file to free up room on re-usable lambda function container
     try:
         os.remove(file_path)

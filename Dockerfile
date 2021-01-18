@@ -14,19 +14,28 @@ COPY requirements.txt /opt/app/requirements.txt
 RUN yum update -y
 RUN yum install -y cpio python3-pip yum-utils zip unzip less
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-
+# RUN yum install wget -y 
+# RUN wget https://bootstrap.pypa.io/get-pip.py
+# RUN python get-pip.py 
+# RUN pip install pipenv
+# RUN pipenv install
 # This had --no-cache-dir, tracing through multiple tickets led to a problem in wheel
 RUN pip3 install -r requirements.txt
 RUN rm -rf /root/.cache/pip
 
 # Download libraries we need to run in lambda
 WORKDIR /tmp
-RUN yumdownloader -x \*i686 --archlist=x86_64 clamav clamav-lib clamav-update json-c pcre2
+RUN yumdownloader -x \*i686 --archlist=x86_64 clamav clamav-lib clamav-update json-c pcre2 libprelude gnutls libtasn1 lib64nettle nettle
 RUN rpm2cpio clamav-0*.rpm | cpio -idmv
 RUN rpm2cpio clamav-lib*.rpm | cpio -idmv
 RUN rpm2cpio clamav-update*.rpm | cpio -idmv
 RUN rpm2cpio json-c*.rpm | cpio -idmv
 RUN rpm2cpio pcre*.rpm | cpio -idmv
+RUN rpm2cpio libprelude*.rpm | cpio -idmv
+RUN rpm2cpio gnutls*.rpm | cpio -idmv
+# #rpm2cpio lib* | cpio -idmv had issues running this in the container
+RUN rpm2cpio libtasn1*.rpm | cpio -idmv
+RUN rpm2cpio nettle*.rpm | cpio -idmv
 
 # Copy over the binaries and libraries
 RUN cp /tmp/usr/bin/clamscan /tmp/usr/bin/freshclam /tmp/usr/lib64/* /opt/app/bin/

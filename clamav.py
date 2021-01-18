@@ -23,6 +23,7 @@ import subprocess
 import boto3
 import botocore
 from pytz import utc
+import scan
 
 from common import AV_DEFINITION_S3_PREFIX
 from common import AV_DEFINITION_PATH
@@ -183,8 +184,36 @@ def scan_output_to_json(output):
             summary[key] = value.strip()
     return summary
 
+def delete_s3_object(s3_object):
+    try:
+        s3_object.delete()
+    except Exception:
+        raise Exception(
+            "Failed to delete infected file: %s.%s"
+            % (s3_object.bucket_name, s3_object.key)
+        )
+    else:
+        print("Infected file deleted: %s.%s" % (s3_object.bucket_name, s3_object.key))    
 
-def scan_file(path):
+def copy_clean_files(path, event):
+    s3 = boto3.resource("s3")
+    s3_client = boto3.client("s3")
+    s3_object = scan.event_object(event, event_source="s3")
+    source_bucket = s3_object.bucket_name
+    head, tail = os.path.split(path)
+    key = tail
+    curr_tags = s3_client.get_object_tagging(
+        Bucket=source_bucket, Key=key
+    )["TagSet"]
+    getbucket_name = [kv_pair['Value'] for kv_pair in curr_tags if kv_pair["Key"] == 'destination_bucket']
+    stripoff_string = ''.join(getbucket_name)
+    destination_bucket = stripoff_string
+    print("copying %s to %s:" %(key, destination_bucket))
+    copy_source = {"Bucket": source_bucket, "Key": key}
+    s3.meta.client.copy(copy_source, destination_bucket, key)
+   #delete_object = s3_client.delete_object(Bucket=source_bucket, Key=key)        
+
+def scan_file(path, event):
     av_env = os.environ.copy()
     av_env["LD_LIBRARY_PATH"] = CLAMAVLIB_PATH
     print("Starting clamscan of %s." % path)
@@ -200,6 +229,7 @@ def scan_file(path):
     # Turn the output into a data source we can read
     summary = scan_output_to_json(output)
     if av_proc.returncode == 0:
+        copy_clean_files(path, event)
         return AV_STATUS_CLEAN, AV_SIGNATURE_OK
     elif av_proc.returncode == 1:
         signature = summary.get(path, AV_SIGNATURE_UNKNOWN)
