@@ -1,3 +1,34 @@
+Author : femi Okuta
+version : 0.1
+
+
+Following instructions to create the lambda.zip file. In the event of any changes needed for the lambda function
+
+# Additions made to lambda function
+copy_clean_file() this method was added so as to be able to copy clean file from the staging/scanning bucket to a destination bucket
+This can be found on the clamav module(clamav.py)
+
+# Delete object from source bucket ones it been copied over
+Added a conditional statement to lambda_handler in scan.py to 
+delete the file ones scanning is completed and if scan result is clean
+this can be found in line 263 in svan.py
+
+# To make future changes:
+unzip the lambda.zip file in $PWD/build/lambda.zip 
+make relevant changes 
+
+# To rebuild the function:
+There is a Makefile. To see options to use, just run:
+$ make 
+To rebuild run:
+$ make all 
+
+#After succesfully running the make all command then:
+copy the lambda.zip file to your module 
+
+
+
+
 # bucket-antivirus-function
 
 [![CircleCI](https://circleci.com/gh/upsidetravel/bucket-antivirus-function.svg?style=svg)](https://circleci.com/gh/upsidetravel/bucket-antivirus-function)
